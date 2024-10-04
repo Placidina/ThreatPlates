@@ -33,6 +33,21 @@ local function ScaleSituational(unit)
 	return nil
 end
 
+local function ScaleSituationalThreat(unit)
+	local db = Addon.db.profile.threat
+	local unit_friendly = (unit.reaction == "FRIENDLY")
+
+	if unit.isMarked and db.scale.situational.markedEnabled then
+		return db.scale.situational.markedUnit
+	elseif unit.isMouseover and not Addon.UnitIsTarget(unit.unitid) and db.scale.situational.mouseoverEnabled then
+		return db.scale.situational.mouseoverUnit
+	elseif unit.isCasting and not unit_friendly and not unit.IsInterrupted and not unit.spellIsShielded and db.scale.situational.castingEnemyEnabled then
+		return db.scale.situational.castingEnemyUnit
+	end
+
+	return nil
+end
+
 local function ScaleGeneral(unit)
 	-- Target always has priority
 	if not unit.isTarget then
@@ -83,6 +98,11 @@ local function ScaleThreat(unit, style)
 		if scale then
 			return scale
 		end
+	end
+
+	local scale = ScaleSituationalThreat(unit)
+	if scale then
+		return scale
 	end
 
 	local threatSituation = GetThreatSituation(unit, style, db.toggle.OffTank)

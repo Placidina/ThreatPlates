@@ -1998,10 +1998,30 @@ ThreatPlates.DEFAULT_SETTINGS = {
           OFFTANK = 0.75
         },
       },
+      scale = {
+        situational = {
+          markedEnabled = false,
+          markedUnit = 1.3,
+          mouseoverEnabled = false,
+          mouseoverUnit = 1.3,
+          castingEnemyEnabled = false,
+          castingEnemyUnit = 1.3,
+        },
+      },
       marked = {
         alpha = false,
         art = false,
         scale = false
+      },
+      coloring = {
+        healthbar = {
+          situational = {
+            mouseoverEnabled = false,
+            mouseoverColor = RGB_P(1, 0.84, 0, 1),
+            castingEnemyEnabled = false,
+            castingEnemyColor = RGB_P(0.5, 0, 0.5, 1),
+          },
+        },
       },
     },
     nameplate = {
