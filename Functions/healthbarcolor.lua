@@ -192,6 +192,18 @@ local function GetThreatSituation(unit, style, enable_off_tank)
   return threat_situation
 end
 
+local function SetSituationalThreatColor(unit)
+  local db = Addon.db.profile.threat
+
+  if unit.isMouseover and not Addon.UnitIsTarget(unit.unitid) and db.coloring.healthbar.situational.mouseoverEnabled then
+    return db.coloring.healthbar.situational.mouseoverColor
+  elseif unit.isCasting and not unit.IsInterrupted and not unit.spellIsShielded and db.coloring.healthbar.situational.castingEnemyEnabled then
+    return db.coloring.healthbar.situational.castingEnemyColor
+  end
+
+  return nil
+end
+
 function Addon:GetThreatColor(unit, style, use_threat_table)
   local db = Addon.db.profile
 
@@ -211,6 +223,11 @@ function Addon:GetThreatColor(unit, style, use_threat_table)
   end
 
   if on_threat_table then
+    local situationalThreatColor = SetSituationalThreatColor(unit)
+    if situationalThreatColor then
+      return situationalThreatColor
+    end
+
     color = db.settings[style].threatcolor[GetThreatSituation(unit, style, db.threat.toggle.OffTank)]
   end
 
