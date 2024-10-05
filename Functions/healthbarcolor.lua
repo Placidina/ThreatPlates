@@ -192,13 +192,29 @@ local function GetThreatSituation(unit, style, enable_off_tank)
   return threat_situation
 end
 
-local function SetSituationalThreatColor(unit)
-  local db = Addon.db.profile.threat
+local function OnThreatTable(unit, use_threat_table)
+  local db = Addon.db.profile
 
-  if unit.isMouseover and not Addon.UnitIsTarget(unit.unitid) and db.coloring.healthbar.situational.mouseoverEnabled then
-    return db.coloring.healthbar.situational.mouseoverColor
-  elseif unit.isCasting and not unit.IsInterrupted and not unit.spellIsShielded and db.coloring.healthbar.situational.castingEnemyEnabled then
-    return db.coloring.healthbar.situational.castingEnemyColor
+  if db.threat.UseThreatTable then
+    if IsInInstance() and db.threat.UseHeuristicInInstances then
+      return _G.UnitAffectingCombat(unit.unitid)
+    end
+    
+    return Addon:OnThreatTable(unit)
+  end
+  
+  return _G.UnitAffectingCombat(unit.unitid)
+end
+
+local function SetSituationalThreatColor(unit)
+  local db = Addon.db.profile
+
+  if OnThreatTable(unit, db.threat.UseThreatTable) then
+    if unit.isMouseover and not Addon.UnitIsTarget(unit.unitid) and db.threat.coloring.healthbar.situational.mouseoverEnabled then
+      return db.threat.coloring.healthbar.situational.mouseoverColor
+    elseif unit.isCasting and not unit.IsInterrupted and not unit.spellIsShielded and db.threat.coloring.healthbar.situational.castingEnemyEnabled then
+      return db.threat.coloring.healthbar.situational.castingEnemyColor
+    end
   end
 
   return nil
@@ -208,19 +224,12 @@ function Addon:GetThreatColor(unit, style, use_threat_table)
   local db = Addon.db.profile
 
   local color
-
-  local on_threat_table
-  if use_threat_table then
-    if IsInInstance() and db.threat.UseHeuristicInInstances then
-      -- Use threat detection heuristic in instance
-      on_threat_table = _G.UnitAffectingCombat(unit.unitid)
-    else
-      on_threat_table = Addon:OnThreatTable(unit)
-    end
-  else
-    -- Use threat detection heuristic
-    on_threat_table = _G.UnitAffectingCombat(unit.unitid)
+  if OnThreatTable(unit, use_threat_table) then
+    color = db.settings[style].threatcolor[GetThreatSituation(unit, style, db.threat.toggle.OffTank)]
   end
+
+  return color
+end
 
   if on_threat_table then
     local situationalThreatColor = SetSituationalThreatColor(unit)
@@ -324,7 +333,11 @@ function Addon:SetHealthbarColor(unit)
     c = db.FocusWidget.HPBarColor
   elseif style == "unique" then
     -- Custom nameplate style defined for unit (does not work for totems right now)
-    if unit.isMarked and unique_setting.allowMarked then
+    local situationalThreatColor = SetSituationalThreatColor(unit)
+
+    if situationalThreatColor then
+      c = situationalThreatColor
+    elseif unit.isMarked and unique_setting.allowMarked then
       -- Unit is marked
       local db_raidicon = db.settings.raidicon
       c = db_raidicon.hpMarked[unit.raidIcon]
@@ -364,7 +377,11 @@ function Addon:SetHealthbarColor(unit)
     -- branch for standard coloring (ByHealth or ByClass, ByReaction, ByThreat), style = normal, tank, dps
     -- (healthbar disabled for empty, etotem, NameOnly)
     local db_raidicon = db.settings.raidicon
-    if unit.isMarked and db_raidicon.hpColor then
+    local situationalThreatColor = SetSituationalThreatColor(unit)
+
+    if situationalThreatColor then
+      c = situationalThreatColor
+    elseif unit.isMarked and db_raidicon.hpColor then
       c = db_raidicon.hpMarked[unit.raidIcon]
     elseif db.healthColorChange then
       c = GetColorByHealthDeficit(unit)
