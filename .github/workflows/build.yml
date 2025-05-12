@@ -23,15 +23,15 @@ jobs:
           args: -e -l -n "ThreatPlates-{project-version}{classic}" -g retail
         env:
           GITHUB_OAUTH: ${{ secrets.GITHUB_TOKEN }}
-      - name: Create Classic Package
+      - name: Create Vanilla Package
         uses: BigWigsMods/packager@v2
         with:
           args: -e -l -n "ThreatPlates-{project-version}{classic}" -g classic
         env:
           GITHUB_OAUTH: ${{ secrets.GITHUB_TOKEN }}
-      - name: Create Wrath Classic Package
+      - name: Create Cata Classic Package
         uses: BigWigsMods/packager@v2
         with:
-          args: -e -l -n "ThreatPlates-{project-version}{classic}" -g wrath
+          args: -e -l -n "ThreatPlates-{project-version}{classic}" -g cata
         env:
           GITHUB_OAUTH: ${{ secrets.GITHUB_TOKEN }}
