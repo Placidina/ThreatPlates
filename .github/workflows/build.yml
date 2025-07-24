@@ -32,6 +32,6 @@ jobs:
       - name: Create Cata Classic Package
         uses: BigWigsMods/packager@v2
         with:
-          args: -e -l -n "ThreatPlates-{project-version}{classic}" -g cata
+          args: -e -l -n "ThreatPlates-{project-version}{classic}" -g mists
         env:
           GITHUB_OAUTH: ${{ secrets.GITHUB_TOKEN }}
