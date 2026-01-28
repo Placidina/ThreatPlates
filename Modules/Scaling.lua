@@ -59,6 +59,26 @@ local function ScaleSituational(unit)
 	return nil
 end
 
+local function ScaleSituational(unit)
+	local db = Addon.db.profile.nameplate
+
+	-- Do checks for situational scale settings:
+	if unit.isMarked and db.toggle.MarkedS then
+		return db.scale.Marked
+	elseif unit.isMouseover and not Addon.UnitIsTarget(unit.unitid) and db.toggle.MouseoverUnitScale then
+		return db.scale.MouseoverUnit
+	elseif unit.isCasting then
+		local unit_friendly = (unit.reaction == "FRIENDLY")
+		if unit_friendly and db.toggle.CastingUnitScale then
+			return db.scale.CastingUnit
+		elseif not unit_friendly and db.toggle.CastingEnemyUnitScale then
+			return db.scale.CastingEnemyUnit
+		end
+	end
+
+	return nil
+end
+
 local function ScaleGeneral(unit)
 	-- Target always has priority
 	if not Addon.UnitIsTarget(unit.unitid) then
@@ -110,6 +130,11 @@ local function ScaleThreat(unit, style)
 		if scale then
 			return scale
 		end
+	end
+
+	local scale = ScaleSituationalThreat(unit)
+	if scale then
+		return scale
 	end
 
 	local scale = db[style].scale[unit.ThreatLevel]
