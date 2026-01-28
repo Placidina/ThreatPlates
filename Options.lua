@@ -4088,54 +4088,69 @@ local function CreateBossModsWidgetOptions()
               },
             },            
           },
-          Glow = {
-            name = L["Highlight for Expiring Icons"],
+          Effects = {
+            name = L["Effects"],
             type = "group",
             order = 15,
             inline = true,
             args = {
-              Priority = {
-                name = L["Priority"],
-                type = "select",
-                order = 10,
-                values = {
-                  None = L["None"],
-                  Important = L["Important"],
-                  All = L["All"],
-                },
-                desc = L["Only highlight expiring alerts with the selected priority."],
-                arg = { "BossModsWidget",  "Glow", "Priority" },
-              },
-              GlowType = {
-                name = L["Glow Type"],
-                type = "select",
-                values = Addon.GLOW_TYPES,
-                order = 20,
-                arg = { "BossModsWidget",  "Glow", "Type" },
-              },
-              GlowColorEnable = {
-                name = L["Glow Color"],
+              CooldownSpiral = {
+                name = L["Cooldown Spiral"],
                 type = "toggle",
-                order = 30,
-                arg = { "BossModsWidget", "Glow", "CustomColor" },
+                order = 10,
+                desc = L["Show a cooldown swipe on the icon."],
+                arg = { "BossModsWidget", "ShowCooldownSpiral" },
               },
-              GlowColor = {
-                name = L["Color"],
-                type = "color",
-                order = 40,
-                hasAlpha = true,
-                set = function(info, r, g, b, a)
-                  local color = db.BossModsWidget.Glow.Color
-                  color[1], color[2], color[3], color[4] = r, g, b, a
-                  Addon.Widgets:UpdateSettings("BossMods")
-                end,
-                get = function(info)
-                  local color = db.BossModsWidget.Glow.Color
-                  return unpack(color)
-                end,
-                arg = { "BossModsWidget", "Glow", "Color" },
+              Glow = {
+                name = L["Highlight for Expiring Icons"],
+                type = "group",
+                order = 15,
+                inline = true,
+                args = {
+                  Priority = {
+                    name = L["Priority"],
+                    type = "select",
+                    order = 10,
+                    values = {
+                      None = L["None"],
+                      Important = L["Important"],
+                      All = L["All"],
+                    },
+                    desc = L["Only highlight expiring alerts with the selected priority."],
+                    arg = { "BossModsWidget",  "Glow", "Priority" },
+                  },
+                  GlowType = {
+                    name = L["Glow Type"],
+                    type = "select",
+                    values = Addon.GLOW_TYPES,
+                    order = 20,
+                    arg = { "BossModsWidget",  "Glow", "Type" },
+                  },
+                  GlowColorEnable = {
+                    name = L["Glow Color"],
+                    type = "toggle",
+                    order = 30,
+                    arg = { "BossModsWidget", "Glow", "CustomColor" },
+                  },
+                  GlowColor = {
+                    name = L["Color"],
+                    type = "color",
+                    order = 40,
+                    hasAlpha = true,
+                    set = function(info, r, g, b, a)
+                      local color = db.BossModsWidget.Glow.Color
+                      color[1], color[2], color[3], color[4] = r, g, b, a
+                      Addon.Widgets:UpdateSettings("BossMods")
+                    end,
+                    get = function(info)
+                      local color = db.BossModsWidget.Glow.Color
+                      return unpack(color)
+                    end,
+                    arg = { "BossModsWidget", "Glow", "Color" },
+                  },
+                },
               },
-            }
+            },
           },
           Config = {
             name = L["Configuration Mode"],
@@ -6944,8 +6959,7 @@ local function CreateHealthbarOptions()
                 name = L["Custom"],
                 order = 60,
                 type = "toggle",
-                width = "half",
-                desc = L["Use a custom color for the healtbar's background."],
+                desc = L["Use a custom color for the healthbar's background."],
                 set = function(info, val)
                   SetThemeValue(info, not val)
                 end,
@@ -6959,12 +6973,47 @@ local function CreateHealthbarOptions()
                 order = 70,
                 type = "color",
                 get = GetColor, set = SetColor, arg = {"settings", "healthbar", "BackgroundColor"},
-                width = "half",
                 disabled = function() return db.settings.healthbar.BackgroundUseForegroundColor end,
               },
+              Spacer2 = GetSpacerEntry(75),
+              BorderColorText = {
+                type = "description",
+                order = 80,
+                width = "single",
+                name = L["Border Color:"],
+              },
+              BorderColorForegroundToggle = {
+                name = L["Same as Foreground"],
+                order = 81,
+                type = "toggle",
+                desc = L["Use the healthbar's foreground color also for the border."],
+                set = SetThemeValue,
+                arg = { "settings", "healthbar", "BorderUseForegroundColor" },
+              },
+              BorderColorCustomToggle = {
+                name = L["Custom"],
+                order = 82,
+                type = "toggle",
+                desc = L["Use a custom color for the healthbar's border."],
+                set = function(info, val)
+                  SetValue(info, not val)
+                end,
+                get = function(info, val)
+                  return not GetValue(info, val)
+                end,
+                arg = { "settings", "healthbar", "BorderUseForegroundColor" },
+              },
+              BorderColorCustom = {
+                name = L["Color"],
+                order = 83,
+                type = "color",
+                get = GetColor, set = SetColor, arg = {"settings", "healthbar", "BorderColor"},
+                disabled = function() return db.settings.healthbar.BorderUseForegroundColor end,
+              },
+              Spacer3 = GetSpacerEntry(85),
               BackgroundOpacity = {
                 name = L["Background Transparency"],
-                order = 80,
+                order = 90,
                 type = "range",
                 min = 0,
                 max = 1,
@@ -6974,7 +7023,7 @@ local function CreateHealthbarOptions()
               },
               AbsorbGroup = {
                 name = L["Absorbs"],
-                order = 90,
+                order = 100,
                 type = "group",
                 inline = true,
                 hidden = function() return not Addon.WOW_FEATURE_ABSORBS end, -- Absorbs were added with Mists
@@ -8809,7 +8858,7 @@ CreateCustomNameplateEntry = function(index)
             inline = true,
             args = {
               CustomColor = {
-                name = L["Color"],
+                name = L["Healthbar"],
                 order = 1,
                 type = "toggle",
                 desc = L["Define a custom color for this nameplate and overwrite any other color settings."],
@@ -8828,7 +8877,7 @@ CreateCustomNameplateEntry = function(index)
               },
               UseRaidMarked = {
                 name = L["Color by Target Mark"],
-                order = 4,
+                order = 3,
                 type = "toggle",
                 width = "double",
                 desc = L["Additionally color the nameplate's healthbar or name based on the target mark if the unit is marked."],
@@ -8836,6 +8885,25 @@ CreateCustomNameplateEntry = function(index)
                   return not db.uniqueSettings[index].useColor
                 end,
                 arg = { "uniqueSettings", index, "allowMarked" },
+              },
+            Spacer0 = GetSpacerEntry(3.5),
+              CustomBorderColor = {
+                name = L["Border"],
+                order = 4,
+                type = "toggle",
+                desc = L["Define a custom color for this border and overwrite any other color settings."],
+                arg = { "uniqueSettings", index, "UseBorderColor" },
+              },
+              BorderColorSetting = {
+                name = L["Color"],
+                order = 5,
+                type = "color",
+                disabled = function()
+                  return not db.uniqueSettings[index].UseBorderColor
+                end,
+                get = GetColor,
+                set = SetColor,
+                arg = { "uniqueSettings", index, "BorderColor" },
               },
               Spacer1 = GetSpacerEntry(10),
               CustomAlpha = {
@@ -11474,9 +11542,9 @@ local function CreateOptionsTable()
   options.args.profiles = LibStub("AceDBOptions-3.0"):GetOptionsTable(Addon.db)
   options.args.profiles.order = 10000
 
-  -- Add dual-spec support
-  if Addon.ExpansionIsAtLeastWrath then
-    local LibDualSpec = LibStub:GetLibrary("LibDualSpec-1.0", true)
+  -- Add dual-spec support, no also available in Classic (Season, Anniversary)
+  local LibDualSpec = LibStub:GetLibrary("LibDualSpec-1.0", true)
+  if Addon.ExpansionIsAtLeastTBC or Addon.IS_CLASSIC_SOD or (C_Seasons and C_Seasons.GetActiveSeason() == 11) or (C_Seasons and C_Seasons.GetActiveSeason() == 12) then
     if LibDualSpec then
       LibDualSpec:EnhanceDatabase(Addon.db, t.ADDON_NAME)
       LibDualSpec:EnhanceOptions(options.args.profiles, Addon.db)

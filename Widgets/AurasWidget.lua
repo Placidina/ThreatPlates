@@ -22,6 +22,7 @@ local BUFF_MAX_DISPLAY = BUFF_MAX_DISPLAY
 local GetFramerate = GetFramerate
 local DebuffTypeColor = DebuffTypeColor
 local UnitIsUnit = UnitIsUnit
+local UnitAura = UnitAura
 local GetAuraSlots = C_UnitAuras and C_UnitAuras.GetAuraSlots
 local GetAuraDataBySlot, GetAuraDataByAuraInstanceID = C_UnitAuras and C_UnitAuras.GetAuraDataBySlot, C_UnitAuras and C_UnitAuras.GetAuraDataByAuraInstanceID
 local GetNamePlates, GetNamePlateForUnit = C_NamePlate.GetNamePlates, C_NamePlate.GetNamePlateForUnit
@@ -415,6 +416,7 @@ local CROWD_CONTROL_SPELLS_BY_EXPANSION = {
     -- [57994] = CC_SILENCE,         -- Wind Shear
     [3600] = PC_SNARE,            -- Earthbind Totem
     [51490] = PC_SNARE,           -- Thunderstorm
+    [204408] = PC_SNARE,          -- Thunderstorm, triggerd by Traveling Storms
     [204399] = LOC_STUN,          -- Stun aura from Earthfury (Honor)
     [196840] = PC_SNARE,          -- Frost Shock
     [204437] = LOC_STUN,          -- Lightning Lasso (Honor)
@@ -1595,6 +1597,7 @@ Widget.CROWD_CONTROL_SPELLS = CROWD_CONTROL_SPELLS_BY_EXPANSION[Addon.GetExpansi
 local PLayerIsInInstance = false
 --local PLayerIsInCombat = false
 --local DispellableDebuffCache = {}
+local UnitAuraCache = {}
 
 ---------------------------------------------------------------------------------------------------
 -- Cached configuration settings
@@ -1924,42 +1927,46 @@ end
 
 -- function AurasModule:RegisterEvents()
 -- end
-
-local UnitAuraWrapper
 local ProcessAllUnitAuras
-
--- Defined here as it's used for configuration mode even in Mainline
-local function ProcessAllUnitAurasClassic(unitid, effect)
-  local _
-  local unit_auras = {}
-
-  for i = 1, 40 do
-    local aura = {}
-
-    aura.name, aura.icon, aura.applications, aura.dispelName, aura.duration, aura.expirationTime, aura.sourceUnit,
-      aura.isStealable, aura.nameplateShowPersonal, aura.spellId, aura.canApplyAura, aura.isBossAura, _, aura.nameplateShowAll =
-      UnitAuraWrapper(unitid, i, effect)
-
-    if aura.name then 
-      aura.auraInstanceID = i
-
-      aura.duration = aura.duration or 0
-
-      unit_auras[#unit_auras + 1] = aura
-      -- if aura.sourceUnit == "player" then
-      --   Addon.Logging.Debug("Aura:", aura.name, "=> ID:", aura.spellId)
-      -- end
-    else
-      break
-    end
-  end
-
-  return unit_auras
-end
 
 -- UnitAuraSlots: BfA - Patch 8.2.5 (2019-09-24): Added.
 -- C_UnitAuras.GetAuraSlots: DF - Patch 10.2.5 (2024-01-16): Deprecated. Replaced by C_UnitAuras.GetAuraSlots.
-if Addon.IS_MAINLINE then  
+if Addon.IS_CLASSIC then 
+    ProcessAllUnitAuras = function(unitid, effect)
+    local _
+    local unit_auras = {}
+
+    if effect == "HELPFUL" and UnitReaction("player", unitid) < 5 and UnitAuraCache[unitid] then
+      for aura_instance_id, unit_aura_info in pairs (UnitAuraCache[unitid].Buffs) do
+        unit_aura_info.duration = unit_aura_info.duration or 0
+        unit_auras[#unit_auras + 1] = unit_aura_info
+      end
+    else
+      for i = 1, 40 do
+        local aura = {}
+
+        aura.name, aura.icon, aura.applications, aura.dispelName, aura.duration, aura.expirationTime, aura.sourceUnit,
+          aura.isStealable, aura.nameplateShowPersonal, aura.spellId, aura.canApplyAura, aura.isBossAura, _, aura.nameplateShowAll =
+          UnitAura(unitid, i, effect)
+
+        if aura.name then 
+          aura.auraInstanceID = i
+
+          aura.duration = aura.duration or 0
+
+          unit_auras[#unit_auras + 1] = aura
+          -- if aura.sourceUnit == "player" then
+          --   Addon.Logging.Debug("Aura:", aura.name, "=> ID:", aura.spellId)
+          -- end
+        else
+          break
+        end
+      end
+    end
+
+    return unit_auras
+  end
+else
   ProcessAllUnitAuras = function(unitid, effect)
     local _
     local unit_auras = {}
@@ -1995,9 +2002,6 @@ if Addon.IS_MAINLINE then
 
     return unit_auras
   end
-else
-  UnitAuraWrapper = UnitAura -- will be overwritten for Classic (but not for TBC or Wrath Classic)
-  ProcessAllUnitAuras = ProcessAllUnitAurasClassic
 end
 
 
@@ -2048,11 +2052,45 @@ local function FlagAuraGridForUpdate(aura_grid_update, is_crowdcontrol_aura, is_
   end
 end
 
+local function UpdateUnitAuraCache(unit, unit_aura_update_info)
+  local unit_aura_cache = UnitAuraCache[unit.unitid]
+  if not unit_aura_cache then
+    unit_aura_cache = {
+      Buffs = {},
+    }
+    UnitAuraCache[unit.unitid] = unit_aura_cache
+  end
+
+  if unit_aura_update_info == nil then
+    unit_aura_cache.Buffs = {}
+  else
+    if unit_aura_update_info.isFullUpdate then
+      unit_aura_cache.Buffs = {}
+    end
+
+    if unit.reaction ~= "FRIENDLY" then
+      if unit_aura_update_info.addedAuras then
+        for _, unit_aura_info in ipairs(unit_aura_update_info.addedAuras) do
+          if unit_aura_info.isHelpful then
+            unit_aura_cache.Buffs[unit_aura_info.auraInstanceID] = unit_aura_info
+          end
+        end
+      end
+
+      if unit_aura_update_info.removedAuraInstanceIDs then
+        for _, aura_instance_id in ipairs(unit_aura_update_info.removedAuraInstanceIDs) do
+          unit_aura_cache.Buffs[aura_instance_id] = nil
+        end
+      end
+    end
+  end
+end
+
 local function UnitAuraEventHandler(widget_frame, event, unitid, unit_aura_update_info)
   local unit = widget_frame.unit
 
   if widget_frame.Active then
-      widget_frame.Widget:UpdateAuras(widget_frame, widget_frame.unit)
+    widget_frame.Widget:UpdateAuras(widget_frame, widget_frame.unit, unit_aura_update_info)
   end
 end
 
@@ -2751,52 +2789,12 @@ function Widget:UpdateAurasGrids(widget_frame, unit)
   -- end
 end
 
-function Widget:UpdateAuras(widget_frame, unit)
+function Widget:UpdateAuras(widget_frame, unit, unit_aura_update_info)
   if not IgnoreAuraUpdateForUnit(widget_frame, unit) then 
+    if Addon.IS_CLASSIC then
+      UpdateUnitAuraCache(unit, unit_aura_update_info)
+    end
     self:UpdateAurasGrids(widget_frame, unit)
-  end
-end
-
----------------------------------------------------------------------------------------------------
--- Functions for cooldown handling incl. OmniCC support
----------------------------------------------------------------------------------------------------
-
-local function CreateCooldown(parent)
-  -- When the cooldown shares the frameLevel of its parent, the icon texture can sometimes render
-  -- ontop of it. So it looks like it's not drawing a cooldown but it's just hidden by the icon.
-
-  local cooldown_frame = _G.CreateFrame("Cooldown", nil, parent, "ThreatPlatesAuraWidgetCooldown")
-  cooldown_frame:SetAllPoints(parent.Icon)
-  cooldown_frame:SetReverse(true)
-  cooldown_frame:SetHideCountdownNumbers(true)
-  cooldown_frame.noCooldownCount = HideOmniCC
-
-  return cooldown_frame
-end
-
-local function UpdateCooldown(cooldown_frame, db)
-  if db.ShowCooldownSpiral then
-    cooldown_frame:SetDrawEdge(true)
-    cooldown_frame:SetDrawSwipe(true)
-  else
-    cooldown_frame:SetDrawEdge(false)
-    cooldown_frame:SetDrawSwipe(false)
-  end
-
-  -- Fix for OmnniCC cooldown numbers being shown on auras
-  if cooldown_frame.noCooldownCount ~= HideOmniCC then
-    cooldown_frame.noCooldownCount = HideOmniCC
-    -- Force an update on OmniCC cooldowns
-    cooldown_frame:Hide()
-    cooldown_frame:Show()
-  end
-end
-
-local function SetCooldown(cooldown_frame, duration, expiration)
-  if duration and expiration and duration > 0 and expiration > 0 then
-    cooldown_frame:SetCooldown(expiration - duration, duration + .25)
-  else
-    cooldown_frame:Clear()
   end
 end
 
@@ -3011,8 +3009,7 @@ local function CreateAuraFrameIconMode(self, parent)
   frame.Icon = frame:CreateTexture(nil, "ARTWORK", nil, -5)
   frame.Border = _G.CreateFrame("Frame", nil, frame, BackdropTemplate)
   frame.Border:SetFrameLevel(parent:GetFrameLevel())
-  frame.Cooldown = CreateCooldown(frame)
-  frame.Cooldown:SetFrameLevel(parent:GetFrameLevel())
+  frame.Cooldown = Addon.CreateCooldown(frame, HideOmniCC)
 
   frame.Highlight = _G.CreateFrame("Frame", nil, frame)
   frame.Highlight:SetFrameLevel(parent:GetFrameLevel())
@@ -3035,7 +3032,7 @@ end
 local function UpdateAuraFrameIconMode(self, frame)
   local db = self.db_widget
 
-  UpdateCooldown(frame.Cooldown, db)
+  frame.Cooldown:SetShownSwipe(db.ShowCooldownSpiral, HideOmniCC)
   if ShowDuration then
     frame.TimeLeft:Show()
   else
@@ -3043,6 +3040,7 @@ local function UpdateAuraFrameIconMode(self, frame)
   end
 
   -- Add tooltips to icons
+
   if db.ShowTooltips then
     frame:SetScript("OnEnter", AuraFrameOnEnter)
     frame:SetScript("OnLeave", AuraFrameOnLeave)
@@ -3050,6 +3048,10 @@ local function UpdateAuraFrameIconMode(self, frame)
     frame:SetScript("OnEnter", nil)
     frame:SetScript("OnLeave", nil)
   end
+  -- Setting the OnEnter/Leave, OnMouseDown/Up script automatically implies EnableMouse(true)
+  -- And with that, right clicking and moving the camera does not work anymore when hovering over an aura.
+  frame:EnableMouse(false)
+  frame:SetMouseMotionEnabled(true)
 
   db = self.db
 
@@ -3117,8 +3119,8 @@ local function UpdateAuraInformationIconMode(self, aura_frame) -- texture, durat
       AuraHighlightStop(aura_frame.Highlight)
     end
   end
-
-  SetCooldown(aura_frame.Cooldown, duration, expiration)
+  
+  aura_frame.Cooldown:Set(expiration - duration, duration + .25)
   Animations:StopFlash(aura_frame)
 
   aura_frame:Show()
@@ -3176,8 +3178,7 @@ local function CreateAuraFrameBarMode(self, parent)
   frame.TimeText = frame.Statusbar:CreateFontString(nil, "OVERLAY")
   frame.TimeText:SetAllPoints(frame.Statusbar)
 
-  frame.Cooldown = CreateCooldown(frame)
-  frame.Cooldown:SetFrameLevel(parent:GetFrameLevel())
+  frame.Cooldown = Addon.CreateCooldown(frame, HideOmniCC)
 
   frame:Hide()
 
@@ -3187,7 +3188,7 @@ end
 local function UpdateAuraFrameBarMode(self, frame)
   local db = self.db_widget
 
-  UpdateCooldown(frame.Cooldown, db)
+  frame.Cooldown:SetShownSwipe(db.ShowCooldownSpiral, HideOmniCC)
   if ShowDuration then
     frame.TimeText:Show()
   else
@@ -3202,6 +3203,10 @@ local function UpdateAuraFrameBarMode(self, frame)
     frame:SetScript("OnEnter", nil)
     frame:SetScript("OnLeave", nil)
   end
+  -- Setting the OnEnter/Leave, OnMouseDown/Up script automatically implies EnableMouse(true)
+  -- And with that, right clicking and moving the camera does not work anymore when hovering over an aura.
+  frame:EnableMouse(false)
+  frame:SetMouseMotionEnabled(true)
 
   db = self.db
   local font = Addon.LibSharedMedia:Fetch('font', db.Font)
@@ -3309,7 +3314,7 @@ local function UpdateAuraInformationBarMode(self, aura_frame) -- texture, durati
   -- Highlight Coloring
   aura_frame.Statusbar:SetStatusBarColor(color.r, color.g, color.b, color.a or 1)
 
-  SetCooldown(aura_frame.Cooldown, duration, expiration)
+  aura_frame.Cooldown:Set(duration, expiration)
   Animations:StopFlash(aura_frame)
 
   aura_frame:Show()
@@ -3694,7 +3699,6 @@ end
 ---------------------------------------------------------------------------------------------------
 
 local EnabledConfigMode = false
-local OldUnitAura, OldProcessAllUnitAuras
 local Timer
 
 local ConfigModeAuras = {
@@ -3768,23 +3772,43 @@ local function TimerCallback()
   end
 end
 
+local function ProcessAllUnitAurasConfigMode(unitid, effect)
+  local unit_auras = {}
+
+  for i = 1, 40 do
+    local aura = {}
+
+    aura.name, aura.icon, aura.applications, aura.dispelName, aura.duration, aura.expirationTime, aura.sourceUnit,
+      aura.isStealable, aura.nameplateShowPersonal, aura.spellId, aura.canApplyAura, aura.isBossAura, aura.castByPlayer, aura.nameplateShowAll =
+      UnitAuraForConfigurationMode(unitid, i, effect)
+
+    if aura.name then 
+      aura.auraInstanceID = i
+      unit_auras[#unit_auras + 1] = aura
+    else
+      break
+    end
+  end
+
+  return unit_auras
+end
+
+local ProcessAllUnitAurasBackup
+
 function Widget:ToggleConfigurationMode()
   if not EnabledConfigMode then
     EnabledConfigMode = true
 
     GenerateDemoAuras()
-    OldUnitAura = UnitAuraWrapper
-    OldProcessAllUnitAuras = ProcessAllUnitAuras
-    UnitAuraWrapper = UnitAuraForConfigurationMode
-    ProcessAllUnitAuras = ProcessAllUnitAurasClassic
+    ProcessAllUnitAurasBackup = ProcessAllUnitAuras
+    ProcessAllUnitAuras = ProcessAllUnitAurasConfigMode
 
     Addon:ForceUpdate()
     Timer = C_Timer.NewTicker(0.5, TimerCallback)
   else
     EnabledConfigMode = false
 
-    UnitAuraWrapper = OldUnitAura
-    ProcessAllUnitAuras = OldProcessAllUnitAuras
+    ProcessAllUnitAuras = ProcessAllUnitAurasBackup
     Timer:Cancel()
 
     Addon:ForceUpdate()

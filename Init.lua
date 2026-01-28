@@ -25,8 +25,10 @@ local UnitDetailedThreatSituation = UnitDetailedThreatSituation
 -- WoW Version Check
 ---------------------------------------------------------------------------------------------------
 Addon.IS_CLASSIC = (WOW_PROJECT_ID == WOW_PROJECT_CLASSIC)
-Addon.IS_CLASSIC_SOD = (Addon.IS_CLASSIC and (select(4, GetBuildInfo()) >= 11500))
+Addon.IS_CLASSIC_SOM = (Addon.IS_CLASSIC and C_Seasons and C_Seasons.GetActiveSeason() == 1)
+Addon.IS_CLASSIC_SOD = (Addon.IS_CLASSIC and C_Seasons and C_Seasons.GetActiveSeason() == 2)
 Addon.IS_TBC_CLASSIC = (GetClassicExpansionLevel and GetClassicExpansionLevel() == LE_EXPANSION_BURNING_CRUSADE)
+Addon.IS_TBC_CLASSIC_ANNIVERSARY = (Addon.IS_TBC_CLASSIC and C_Seasons and C_Seasons.GetActiveSeason() == 125)
 Addon.IS_WRATH_CLASSIC = (GetClassicExpansionLevel and GetClassicExpansionLevel() == LE_EXPANSION_WRATH_OF_THE_LICH_KING)
 Addon.IS_CATA_CLASSIC = (GetClassicExpansionLevel and GetClassicExpansionLevel() == LE_EXPANSION_CATACLYSM)
 Addon.IS_MISTS_CLASSIC = (GetClassicExpansionLevel and GetClassicExpansionLevel() == LE_EXPANSION_MISTS_OF_PANDARIA)
@@ -254,6 +256,54 @@ Addon.CUSTOM_GLOW_WRAPPER_FUNCTIONS = {
 	AutoCastGlow_Start = Wrapper_AutoCastGlow_Start,
 	Glow_Stop = Wrapper__PixelGlow_Stop,
 }
+
+---------------------------------------------------------------------------------------------------
+-- Functions for cooldown handling incl. OmniCC support
+---------------------------------------------------------------------------------------------------
+
+local function SetShownCooldownSwipe(self, show_cooldown_swipe, hide_omnic_cc)
+  if show_cooldown_swipe then
+    self:SetDrawEdge(true)
+    self:SetDrawSwipe(true)
+  else
+    self:SetDrawEdge(false)
+    self:SetDrawSwipe(false)
+  end
+
+  -- Fix for OmnniCC cooldown numbers being shown on auras
+  if self.noCooldownCount ~= hide_omnic_cc then
+    self.noCooldownCount = hide_omnic_cc
+    -- Force an update on OmniCC cooldowns
+    self:Hide()
+    self:Show()
+  end
+end
+
+local function SetCooldown(self, start, duration)
+  if start and duration and start > 0 and duration > 0 then
+    self:SetCooldown(start, duration)
+  else
+    self:Clear()
+  end
+end
+
+Addon.CreateCooldown = function (parent, hide_omnic_cc)
+  -- When the cooldown shares the frameLevel of its parent, the icon texture can sometimes render
+  -- ontop of it. So it looks like it's not drawing a cooldown but it's just hidden by the icon.
+
+  local frame = _G.CreateFrame("Cooldown", nil, parent, "ThreatPlatesCooldownSwipe")
+  frame:SetAllPoints(parent.Icon)
+  frame:SetReverse(true)
+  frame:SetHideCountdownNumbers(true)
+	frame:SetFrameLevel(parent:GetFrameLevel())
+  
+	frame.noCooldownCount = hide_omnic_cc
+
+	frame.SetShownSwipe = SetShownCooldownSwipe
+	frame.Set = SetCooldown
+
+  return frame
+end
 
 --------------------------------------------------------------------------------------------------
 -- General Functions

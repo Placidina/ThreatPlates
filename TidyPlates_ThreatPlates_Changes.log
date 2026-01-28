@@ -1,4 +1,72 @@
 ﻿------------------------------------------------------
+12.6.5 (2026-01-14)
+------------------------------------------------------
+* Added support for WoW Burning Crusade Classic Anniversary Edition.
+* Fixed a Lua error that occurred in rare circumstances in WoW Classic when a unit's castbar was shown.
+* Support for dual spec profiles has been enabled for WoW Classic.
+* Fixed a bug in Auras widget that prevented buffs of hostile units from being displayed. [PM].
+* Updated TOC version for Patch 5.5.3 for WoW Mists Classic.
+
+------------------------------------------------------
+12.6.4 (2025-12-06)
+------------------------------------------------------
+* Updated integrated libraries (Ace3 r1377).
+* Updated TOC version for Patch 11.2.7 for WoW Mainline.
+* Updated TOC version for Patch 5.5.2 for WoW Mists Classic.
+* Updated TOC version for Patch 1.15.8 for WoW Classic.
+
+------------------------------------------------------
+12.6.3 (2025-11-27)
+------------------------------------------------------
+* Fixed a Lua error that occurred in arenas and battlegrounds due to incorrect registration of the ARENA_OPPONENT_UPDATE event [GH-614].
+
+------------------------------------------------------
+12.6.2 (2025-10-22)
+------------------------------------------------------
+* Fixed a bug that prevented turning the camera while the right mouse button was held down and the cursor was hovering over an aura with aura tooltips enabled [Comment #7764].
+* Fixed a Lua error that occurred when enabling bar mode for auras [GH-613].
+
+------------------------------------------------------
+12.6.1 (2025-10-07)
+------------------------------------------------------
+* Updated list of instance IDs of Delves for custom nameplates [PR GH-612 by tflo].
+* Updated TOC version for Patch 11.2.5 for WoW Mainline.
+* Updated TOC version for Patch 5.5.1 for WoW Mists Classic [PR GH-611 by Adal4].
+
+------------------------------------------------------
+12.6.0 (2025-09-14)
+------------------------------------------------------
+* Added an option to change the healthbar border color [GH-600 by PolyBadger].
+
+------------------------------------------------------
+12.5.2 (2025-09-07)
+------------------------------------------------------
+* Fixed a Lua error that occurred on Death Knights when Blizzard-style combo points were used in Mists Classic.
+
+------------------------------------------------------
+12.5.1 (2025-09-03)
+------------------------------------------------------
+* Fixed a bug where internal variables were made global, which could cause issues with other addons [PR GH-608 by tflo].
+
+------------------------------------------------------
+12.5.0 (2025-08-31)
+------------------------------------------------------
+* Name-based custom nameplates now also work with just a player's name. There is no longer a need to include title and realm [PR GH-602 by tflo].
+* Added cooldown swipe support to the BossMods widget [Comment #7694].
+* Added Thunderstorm from Traveling Storms (Shaman) as a CC aura to the Auras widget [GH-606].
+
+------------------------------------------------------
+12.4.4 (2025-08-25)
+------------------------------------------------------
+* Fixed a bug that prevented the castbar from appearing after the nameplate was hidden while the unit was casting [GH-603, GH-604].
+* Fixed a bug that prevented DBM from correctly determining whether the Threat Plates BossMods widget was enabled.
+
+------------------------------------------------------
+12.4.3 (2025-08-18)
+------------------------------------------------------
+* Fixed a bug that prevented the castbar from hiding reliably for non-interruptible casts after a stun [GH-599].
+
+------------------------------------------------------
 12.4.2 (2025-08-11)
 ------------------------------------------------------
 * Fixed a bug in the ComboPoints widget that prevented combo points from displaying correctly after a target switch [Comment #7712].
